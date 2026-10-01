@@ -3,7 +3,6 @@ name: check-pr
 on:
   pull_request:
 
-# dorny/test-reporter がチェック結果を作成するために checks: write が必要
 permissions:
   contents: read
   actions: read
@@ -71,5 +70,4 @@ jobs:
           path: 'test_report.log'
           reporter: 'flutter-json'
           fail-on-error: 'true'
-          # true(既定値)だとジョブサマリーへの出力のみでチェックが作成されないため、ステータスチェック用に false にする
           use-actions-summary: 'false'
