@@ -3,6 +3,12 @@ name: check-pr
 on:
   pull_request:
 
+# dorny/test-reporter がチェック結果を作成するために checks: write が必要
+permissions:
+  contents: read
+  actions: read
+  checks: write
+
 jobs:
   check:
     runs-on: ubuntu-22.04

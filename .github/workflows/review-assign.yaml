@@ -4,6 +4,10 @@ on:
   pull_request:
     types: [ opened, ready_for_review ]
 
+permissions:
+  issues: write
+  pull-requests: write
+
 env:
   REVIEWERS: ''
 
