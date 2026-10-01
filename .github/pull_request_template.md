@@ -20,3 +20,9 @@ close #ISSUE_NUMBER
 | expected | actual |
 |----------|--------|
 | xxx      | xxx    |
+
+## UIの変更
+
+| Before | After |
+| :---: | :---: |
+| <img src="BEFORE_IMAGE_URL" width="200"> | <img src="AFTER_IMAGE_URL" width="200"> |
