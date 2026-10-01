@@ -71,3 +71,5 @@ jobs:
           path: 'test_report.log'
           reporter: 'flutter-json'
           fail-on-error: 'true'
+          # true(既定値)だとジョブサマリーへの出力のみでチェックが作成されないため、ステータスチェック用に false にする
+          use-actions-summary: 'false'
