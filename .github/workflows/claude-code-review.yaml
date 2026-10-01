@@ -1,0 +1,108 @@
+name: Claude Code Review
+
+on:
+  pull_request:
+    types: [opened, ready_for_review, reopened]
+    # Optional: Only run on specific file changes
+    # paths:
+    #   - "src/**/*.ts"
+    #   - "src/**/*.tsx"
+    #   - "src/**/*.js"
+    #   - "src/**/*.jsx"
+
+jobs:
+  claude-review:
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: read
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Run Claude Code Review
+        id: claude-review
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          plugin_marketplaces: 'https://github.com/anthropics/claude-code.git'
+          plugins: 'code-review@claude-code-plugins'
+          claude_args: >-
+            --allowedTools
+            "mcp__github_inline_comment__create_inline_comment,
+            Bash(gh pr comment:*),
+            Bash(gh pr diff:*),
+            Bash(gh pr view:*)"
+          prompt: |
+            このプルリクエストをレビューしてください。
+
+            REPO: ${{ github.repository }}
+            PR: ${{ github.event.pull_request.number }}
+
+            ## 作業手順
+
+            1. `gh pr diff` でコードの変更内容と行番号を把握する
+            2. 改善点・懸念点がある行に `mcp__github_inline_comment__create_inline_comment` でインラインコメントを追加する
+               - 修正方針が明確な場合は積極的にsuggestionブロックを使う
+            3. `gh pr comment` でレビュー全体のまとめコメントを1件投稿する
+
+            ## インラインコメントの書き方
+
+            - **結論を先に:** 冒頭の1行で指摘の要点を簡潔に述べる
+            - **理由と提案:** その後に判断理由・背景・具体的な修正案を説明する
+            - **指摘中心に:** 修正提案・バグの可能性・可読性の問題など改善点に絞る
+            - **ポジティブなフィードバックはインラインでは控えめに:** 特筆すべき優れた実装のみ言及する
+
+            ## まとめコメントの構成
+
+            まとめコメントは以下の構成で投稿してください。
+
+            ### 1. 優先度別フィードバック一覧（表形式）
+
+            以下の優先度基準で全指摘事項を分類し、表形式で一覧化してください。
+
+            | 優先度 | 基準 |
+            |--------|------|
+            | 🔴 Critical | バグ・セキュリティリスク・データ損失の恐れがあるもの |
+            | 🟠 High | 重大なパフォーマンス問題・設計上の欠陥 |
+            | 🟡 Medium | 保守性・可読性の問題・ベストプラクティス違反 |
+            | 🟢 Low | 軽微なスタイル・命名・コメントの改善提案 |
+
+            出力フォーマット：
+
+            | 優先度 | ファイル | 内容の要約 |
+            |--------|----------|------------|
+            | 🔴 Critical | `src/foo.ts#L12` | 認証チェックが欠落している |
+            | 🟡 Medium | `src/bar.ts#L34` | 変数名が処理内容を反映していない |
+
+            ### 2. 対応推奨順
+
+            表の後に、対応すべき順番を番号付きリストで簡潔に示してください。
+
+            ### 3. 全体所感
+
+            - 良かった点・PR全体へのポジティブな感想をまとめる
+            - 全体的な品質評価を一言で添える
+
+            ## レビュー観点
+
+            - CLAUDE.md のガイドラインに従っているか
+            - コードの品質・ベストプラクティスに沿っているか
+            - バグ・セキュリティリスクがないか
+            - パフォーマンス上の懸念がないか
+            - 保守性・可読性は十分か
+            - 設計・アーキテクチャに妥当性があるか
+
+            ## その他
+
+            - フィードバックは日本語で行う
+            - PRをブロックしないこと（REQUEST_CHANGESは使わない）
+
+          # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
+          # or https://code.claude.com/docs/en/cli-reference for available options
