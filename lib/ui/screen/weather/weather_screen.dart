@@ -1,7 +1,21 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:flutter_training/domain/weather/model/weather_condition.dart';
+import 'package:flutter_training/ui/screen/weather/weather_view_model.dart';
 
 class WeatherScreen extends StatelessWidget {
-  const WeatherScreen({super.key});
+  const WeatherScreen({required this.viewModel, super.key});
+
+  final WeatherViewModel viewModel;
+
+  @override
+  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
+    super.debugFillProperties(properties);
+    properties.add(
+      DiagnosticsProperty<WeatherViewModel>('viewModel', viewModel),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -14,7 +28,24 @@ class WeatherScreen extends StatelessWidget {
           child: Column(
             children: [
               const Spacer(),
-              const AspectRatio(aspectRatio: 1, child: Placeholder()),
+              AspectRatio(
+                aspectRatio: 1,
+                child: ListenableBuilder(
+                  listenable: viewModel,
+                  builder: (context, _) => switch (viewModel.weatherCondition) {
+                    WeatherCondition.sunny => SvgPicture.asset(
+                      'assets/images/sunny.svg',
+                    ),
+                    WeatherCondition.cloudy => SvgPicture.asset(
+                      'assets/images/cloudy.svg',
+                    ),
+                    WeatherCondition.rainy => SvgPicture.asset(
+                      'assets/images/rainy.svg',
+                    ),
+                    WeatherCondition.unknown => const Placeholder(),
+                  },
+                ),
+              ),
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 child: Row(
@@ -50,7 +81,7 @@ class WeatherScreen extends StatelessWidget {
                         ),
                         Expanded(
                           child: TextButton(
-                            onPressed: () {},
+                            onPressed: viewModel.reload,
                             child: const Text('Reload'),
                           ),
                         ),

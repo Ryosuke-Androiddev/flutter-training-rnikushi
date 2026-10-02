@@ -1,15 +1,32 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_training/data/api/weather/weather_repository_impl.dart';
+import 'package:flutter_training/domain/weather/usecase/fetch_weather_use_case_impl.dart';
 import 'package:flutter_training/ui/screen/weather/weather_screen.dart';
+import 'package:flutter_training/ui/screen/weather/weather_view_model.dart';
 
 void main() {
-  runApp(const MainApp());
+  final viewModel = WeatherViewModel(
+    FetchWeatherUseCaseImpl(WeatherRepositoryImpl()),
+  );
+  runApp(MainApp(viewModel: viewModel));
 }
 
 class MainApp extends StatelessWidget {
-  const MainApp({super.key});
+  const MainApp({required this.viewModel, super.key});
+
+  final WeatherViewModel viewModel;
+
+  @override
+  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
+    super.debugFillProperties(properties);
+    properties.add(
+      DiagnosticsProperty<WeatherViewModel>('viewModel', viewModel),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(home: WeatherScreen());
+    return MaterialApp(home: WeatherScreen(viewModel: viewModel));
   }
 }
