@@ -71,7 +71,7 @@ class WeatherScreen extends ConsumerWidget {
                           child: TextButton(
                             onPressed: () => ref
                                 .read(weatherViewModelProvider.notifier)
-                                .reload(),
+                                .fetchWeather(),
                             child: const Text('Reload'),
                           ),
                         ),

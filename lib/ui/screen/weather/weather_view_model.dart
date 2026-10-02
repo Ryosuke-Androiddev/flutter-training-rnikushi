@@ -11,7 +11,7 @@ class WeatherViewModel extends Notifier<WeatherCondition> {
   @override
   WeatherCondition build() => WeatherCondition.unknown;
 
-  void reload() {
+  void fetchWeather() {
     state = switch (ref.read(fetchWeatherUseCaseProvider)()) {
       Success(:final value) => value,
       Failure(error: UnknownError()) => WeatherCondition.unknown,
