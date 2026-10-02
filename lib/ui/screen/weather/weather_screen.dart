@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:flutter_training/ui/screen/weather/weather_condition_extension.dart';
+import 'package:flutter_training/ui/screen/weather/weather_view_model.dart';
 
-class WeatherScreen extends StatelessWidget {
+class WeatherScreen extends ConsumerWidget {
   const WeatherScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final weatherCondition = ref.watch(weatherViewModelProvider);
     final labelLarge = Theme.of(context).textTheme.labelLarge;
 
     return Scaffold(
@@ -14,7 +19,12 @@ class WeatherScreen extends StatelessWidget {
           child: Column(
             children: [
               const Spacer(),
-              const AspectRatio(aspectRatio: 1, child: Placeholder()),
+              AspectRatio(
+                aspectRatio: 1,
+                child: weatherCondition == null
+                    ? const Placeholder()
+                    : SvgPicture.asset(weatherCondition.assetPath),
+              ),
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 child: Row(
@@ -50,7 +60,9 @@ class WeatherScreen extends StatelessWidget {
                         ),
                         Expanded(
                           child: TextButton(
-                            onPressed: () {},
+                            onPressed: () => ref
+                                .read(weatherViewModelProvider.notifier)
+                                .fetchWeather(),
                             child: const Text('Reload'),
                           ),
                         ),

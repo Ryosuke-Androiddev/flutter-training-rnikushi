@@ -17,10 +17,23 @@ fvm flutter test
 fvm flutter run -d <device>
 ```
 
+## アーキテクチャ
+
+設計の詳細は [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) を参照する。実装・レビューの前に必ず確認し、方針を変える場合は同じ PR でドキュメントも更新する。
+
+要点:
+
+- レイヤーは UI（Screen / ViewModel）→ Domain（UseCase / Repository interface）← Data（RepositoryImpl）
+- ViewModel は UseCase だけを参照し、Repository を直接参照しない
+- 状態管理と DI は Riverpod（手書きの Provider）。Provider は `lib/di/` に interface 型で定義する
+- RepositoryImpl は try-catch せず、UseCaseImpl で例外を `Result`（`Success` / `Failure(AppError)`）に変換する
+- ユニットテストは UseCase に対して書き、外部 API だけを Fake に差し替える
+
 ## コーディング規約
 
 - 静的解析は `yumemi_lints`（`analysis_options.yaml`）に従う
 - CI では info レベルの指摘も失敗扱いになるため、`fvm flutter analyze` で指摘ゼロを保つ
+- 実装コードにはコメントを残さない
 
 ## ブランチ・PR 運用
 
@@ -32,3 +45,4 @@ fvm flutter run -d <device>
 
 - レビューコメントは日本語で行う
 - 研修の課題であるため、Issue に書かれた課題の要件を満たしているかも確認する
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) の設計方針に沿っているかも確認する

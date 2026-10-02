@@ -11,10 +11,12 @@ description: flutter-training リポジトリのプルリクエストをレビ�
 
 ## 作業手順
 
-1. `gh pr diff` でコードの変更内容と行番号を把握する
-2. 改善点・懸念点がある行に `mcp__github_inline_comment__create_inline_comment` でインラインコメントを追加する
+1. `CLAUDE.md` と `docs/ARCHITECTURE.md` を読み、プロジェクトの規約と設計方針を把握する
+2. `gh pr view` で PR 本文と紐づく Issue を確認し、課題の要件を把握する
+3. `gh pr diff` でコードの変更内容と行番号を把握する
+4. 改善点・懸念点がある行に `mcp__github_inline_comment__create_inline_comment` でインラインコメントを追加する
    - 修正方針が明確な場合は積極的にsuggestionブロックを使う
-3. `gh pr comment` でレビュー全体のまとめコメントを1件投稿する
+5. `gh pr comment` でレビュー全体のまとめコメントを1件投稿する
 
 ## インラインコメントの書き方
 
@@ -34,7 +36,7 @@ description: flutter-training リポジトリのプルリクエストをレビ�
 | 優先度 | 基準 |
 |--------|------|
 | 🔴 Critical | バグ・セキュリティリスク・データ損失の恐れがあるもの |
-| 🟠 High | 重大なパフォーマンス問題・設計上の欠陥 |
+| 🟠 High | 重大なパフォーマンス問題・設計上の欠陥（`docs/ARCHITECTURE.md` の依存方向・責務分担に反するもの） |
 | 🟡 Medium | 保守性・可読性の問題・ベストプラクティス違反 |
 | 🟢 Low | 軽微なスタイル・命名・コメントの改善提案 |
 
@@ -56,12 +58,44 @@ description: flutter-training リポジトリのプルリクエストをレビ�
 
 ## レビュー観点
 
+### 全般
+
 - CLAUDE.md のガイドラインに従っているか
+- Issue に書かれた課題の要件を満たしているか
 - コードの品質・ベストプラクティスに沿っているか
 - バグ・セキュリティリスクがないか
 - パフォーマンス上の懸念がないか
 - 保守性・可読性は十分か
-- 設計・アーキテクチャに妥当性があるか
+
+### 設計・アーキテクチャ（`docs/ARCHITECTURE.md` 準拠）
+
+ドキュメントの方針から外れている箇所は、該当する節を示して指摘する。方針の変更が妥当な場合は、`docs/ARCHITECTURE.md` の更新も同じ PR に含まれているかを確認する。
+
+- **レイヤーと依存方向**
+  - 依存が UI → Domain ← Data の向きになっているか
+  - Domain が Flutter・外部パッケージ（`yumemi_weather` など）・Data・UI に依存していないか
+  - ViewModel が Repository を直接参照せず、UseCase を経由しているか
+  - Screen が UseCase・Repository を直接参照していないか
+  - 具象クラス（`XxxImpl`）を参照しているのが `lib/di/` だけか
+- **ディレクトリ・命名**
+  - ファイルが `domain/<feature>/`・`data/api/<feature>/`・`ui/screen/<feature>/` の決まった位置にあるか
+  - interface が `abstract interface class`、実装が `<Interface名>Impl` になっているか
+  - ViewModel のメソッド名が UI 操作名ではなく、処理内容を表しているか
+- **状態管理・DI（Riverpod）**
+  - Provider が `lib/di/` に interface 型で宣言されているか（ViewModel の `NotifierProvider` は ViewModel と同じファイル）
+  - 外部 API のクライアントなど、テストで差し替えたい依存が Provider 経由で注入されているか
+  - Screen が `ConsumerWidget` で、状態を `ref.watch`、操作を `ref.read(...notifier)` で扱っているか
+  - `build` 内で直接 `ref.read` していないか、状態を持つインスタンスを `build` 内で生成していないか
+- **エラーハンドリング**
+  - RepositoryImpl に try-catch がなく、想定外のレスポンスを Domain の例外として throw しているか
+  - UseCaseImpl で `on` 節付きの catch により例外を `Result` / `AppError` に変換しているか（`Error` を catch していないか）
+  - ViewModel が `Result` / `AppError` を `switch` で網羅的に処理しているか（`default` や `_` で分岐を潰していないか）
+  - `AppError` を追加した場合、UseCaseImpl のマッピングと ViewModel の分岐が更新されているか
+- **テスト**
+  - UseCase に対するユニットテストがあり、Repository は本物、外部 API だけを Fake にしているか
+  - 依存の差し替えが `ProviderContainer.test(overrides: [...])` で行われているか
+  - 正常系だけでなく、想定外のレスポンス・例外発生時の異常系もテストしているか
+  - `Result` の検証に `isSuccess` / `isFailure<E>` を使っているか
 
 ## その他
 
