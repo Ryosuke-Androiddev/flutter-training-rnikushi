@@ -22,7 +22,7 @@ class FakeYumemiWeather extends Fake implements YumemiWeather {
 }
 
 FetchWeatherUseCaseImpl createUseCase(FakeYumemiWeather api) {
-  return FetchWeatherUseCaseImpl(WeatherRepositoryImpl(api: api));
+  return FetchWeatherUseCaseImpl(WeatherRepositoryImpl(api));
 }
 
 void main() {

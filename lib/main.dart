@@ -4,10 +4,11 @@ import 'package:flutter_training/data/api/weather/weather_repository_impl.dart';
 import 'package:flutter_training/domain/weather/usecase/fetch_weather_use_case_impl.dart';
 import 'package:flutter_training/ui/screen/weather/weather_screen.dart';
 import 'package:flutter_training/ui/screen/weather/weather_view_model.dart';
+import 'package:yumemi_weather/yumemi_weather.dart';
 
 void main() {
   final viewModel = WeatherViewModel(
-    FetchWeatherUseCaseImpl(WeatherRepositoryImpl()),
+    FetchWeatherUseCaseImpl(WeatherRepositoryImpl(YumemiWeather())),
   );
   runApp(MainApp(viewModel: viewModel));
 }

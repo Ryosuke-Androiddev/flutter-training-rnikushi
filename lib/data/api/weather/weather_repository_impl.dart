@@ -4,7 +4,7 @@ import 'package:flutter_training/domain/weather/repository/weather_repository.da
 import 'package:yumemi_weather/yumemi_weather.dart';
 
 class WeatherRepositoryImpl implements WeatherRepository {
-  WeatherRepositoryImpl({YumemiWeather? api}) : _api = api ?? YumemiWeather();
+  const WeatherRepositoryImpl(this._api);
 
   final YumemiWeather _api;
 
