@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:flutter_training/domain/weather/model/weather_condition.dart';
+import 'package:flutter_training/ui/screen/weather/weather_condition_extension.dart';
 import 'package:flutter_training/ui/screen/weather/weather_view_model.dart';
 
 class WeatherScreen extends ConsumerWidget {
@@ -21,18 +21,9 @@ class WeatherScreen extends ConsumerWidget {
               const Spacer(),
               AspectRatio(
                 aspectRatio: 1,
-                child: switch (weatherCondition) {
-                  WeatherCondition.sunny => SvgPicture.asset(
-                    'assets/images/sunny.svg',
-                  ),
-                  WeatherCondition.cloudy => SvgPicture.asset(
-                    'assets/images/cloudy.svg',
-                  ),
-                  WeatherCondition.rainy => SvgPicture.asset(
-                    'assets/images/rainy.svg',
-                  ),
-                  null => const Placeholder(),
-                },
+                child: weatherCondition == null
+                    ? const Placeholder()
+                    : SvgPicture.asset(weatherCondition.assetPath),
               ),
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 16),
