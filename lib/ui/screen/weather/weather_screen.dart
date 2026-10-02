@@ -1,24 +1,15 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_training/domain/weather/model/weather_condition.dart';
 import 'package:flutter_training/ui/screen/weather/weather_view_model.dart';
 
-class WeatherScreen extends StatelessWidget {
-  const WeatherScreen({required this.viewModel, super.key});
-
-  final WeatherViewModel viewModel;
+class WeatherScreen extends ConsumerWidget {
+  const WeatherScreen({super.key});
 
   @override
-  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
-    super.debugFillProperties(properties);
-    properties.add(
-      DiagnosticsProperty<WeatherViewModel>('viewModel', viewModel),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final weatherCondition = ref.watch(weatherViewModelProvider);
     final labelLarge = Theme.of(context).textTheme.labelLarge;
 
     return Scaffold(
@@ -30,21 +21,18 @@ class WeatherScreen extends StatelessWidget {
               const Spacer(),
               AspectRatio(
                 aspectRatio: 1,
-                child: ListenableBuilder(
-                  listenable: viewModel,
-                  builder: (context, _) => switch (viewModel.weatherCondition) {
-                    WeatherCondition.sunny => SvgPicture.asset(
-                      'assets/images/sunny.svg',
-                    ),
-                    WeatherCondition.cloudy => SvgPicture.asset(
-                      'assets/images/cloudy.svg',
-                    ),
-                    WeatherCondition.rainy => SvgPicture.asset(
-                      'assets/images/rainy.svg',
-                    ),
-                    WeatherCondition.unknown => const Placeholder(),
-                  },
-                ),
+                child: switch (weatherCondition) {
+                  WeatherCondition.sunny => SvgPicture.asset(
+                    'assets/images/sunny.svg',
+                  ),
+                  WeatherCondition.cloudy => SvgPicture.asset(
+                    'assets/images/cloudy.svg',
+                  ),
+                  WeatherCondition.rainy => SvgPicture.asset(
+                    'assets/images/rainy.svg',
+                  ),
+                  WeatherCondition.unknown => const Placeholder(),
+                },
               ),
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 16),
@@ -81,7 +69,9 @@ class WeatherScreen extends StatelessWidget {
                         ),
                         Expanded(
                           child: TextButton(
-                            onPressed: viewModel.reload,
+                            onPressed: () => ref
+                                .read(weatherViewModelProvider.notifier)
+                                .reload(),
                             child: const Text('Reload'),
                           ),
                         ),
