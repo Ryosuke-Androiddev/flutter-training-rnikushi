@@ -31,7 +31,7 @@ class WeatherScreen extends ConsumerWidget {
                   WeatherCondition.rainy => SvgPicture.asset(
                     'assets/images/rainy.svg',
                   ),
-                  WeatherCondition.unknown => const Placeholder(),
+                  null => const Placeholder(),
                 },
               ),
               Padding(

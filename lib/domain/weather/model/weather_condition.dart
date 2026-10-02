@@ -1,1 +1,1 @@
-enum WeatherCondition { sunny, cloudy, rainy, unknown }
+enum WeatherCondition { sunny, cloudy, rainy }

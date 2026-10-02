@@ -5,16 +5,16 @@ import 'package:flutter_training/domain/model/result.dart';
 import 'package:flutter_training/domain/weather/model/weather_condition.dart';
 
 final weatherViewModelProvider =
-    NotifierProvider<WeatherViewModel, WeatherCondition>(WeatherViewModel.new);
+    NotifierProvider<WeatherViewModel, WeatherCondition?>(WeatherViewModel.new);
 
-class WeatherViewModel extends Notifier<WeatherCondition> {
+class WeatherViewModel extends Notifier<WeatherCondition?> {
   @override
-  WeatherCondition build() => WeatherCondition.unknown;
+  WeatherCondition? build() => null;
 
   void fetchWeather() {
     state = switch (ref.read(fetchWeatherUseCaseProvider)()) {
       Success(:final value) => value,
-      Failure(error: UnknownError()) => WeatherCondition.unknown,
+      Failure(error: UnknownError()) => null,
     };
   }
 }

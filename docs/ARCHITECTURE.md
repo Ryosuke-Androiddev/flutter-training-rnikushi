@@ -138,7 +138,7 @@ final class UnknownError extends AppError { const UnknownError(); }
 ```
 
 - エラーの種類を増やすときは `AppError` のサブクラスを追加し、UseCaseImpl のマッピングと ViewModel の分岐を更新する
-- 失敗時の画面状態（例: `WeatherCondition.unknown` → `Placeholder` 表示）は ViewModel で決める
+- 失敗時の画面状態（例: ViewModel の状態を `null` にして `Placeholder` を表示）は ViewModel で決める。Domain Model には「未取得・失敗」を表す値（`unknown` など）を持たせない
 
 ## テスト方針
 
