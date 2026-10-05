@@ -11,20 +11,18 @@ class WeatherRepositoryImpl implements WeatherRepository {
 
   @override
   Result<WeatherCondition> fetchWeatherCondition({required String area}) {
-    final String name;
     try {
-      name = _api.fetchThrowsWeather(area);
+      return switch (_api.fetchThrowsWeather(area)) {
+        'sunny' => const Success(WeatherCondition.sunny),
+        'cloudy' => const Success(WeatherCondition.cloudy),
+        'rainy' => const Success(WeatherCondition.rainy),
+        _ => const Failure(UnknownError()),
+      };
     } on YumemiWeatherError catch (error) {
       return Failure(switch (error) {
         YumemiWeatherError.invalidParameter => const InvalidParameterError(),
         YumemiWeatherError.unknown => const UnknownError(),
       });
     }
-    return switch (name) {
-      'sunny' => const Success(WeatherCondition.sunny),
-      'cloudy' => const Success(WeatherCondition.cloudy),
-      'rainy' => const Success(WeatherCondition.rainy),
-      _ => const Failure(UnknownError()),
-    };
   }
 }
