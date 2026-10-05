@@ -66,11 +66,12 @@ lib/
 │       └── weather/               # API を使う RepositoryImpl
 └── ui/
     └── screen/
-        ├── launch/                # 起動時の画面（StatefulWidget）
+        ├── launch/                # 起動時の画面（StatefulWidget）と AfterLayoutMixin
         └── weather/               # Screen と ViewModel
 
 test/
 ├── domain/weather/usecase/        # UseCase のユニットテスト
+├── ui/screen/launch/              # AfterLayoutMixin の Widget テスト
 ├── fake/                          # 外部 API の Fake
 └── helper/                        # テスト用 Matcher など
 ```
@@ -103,6 +104,9 @@ final weatherRepositoryProvider = Provider<WeatherRepository>(
 
 - 画面遷移は Screen で `Navigator` の命令型 API（`push` / `pop`）を使って行う。ViewModel では画面遷移を扱わない
 - `await` の後に `BuildContext` を使うときは、先に `mounted` を確認する
+- 画面のレイアウトが終わった後に行う処理（起動画面からの自動遷移など）は、`State` に `AfterLayoutMixin` を `with` で組み込み、`afterFirstLayout()` に書く
+  - `AfterLayoutMixin` は `on State<T>` で `State` にだけ使えるよう制限し、`initState` をオーバーライドして `WidgetsBinding.instance.endOfFrame` の後に `afterFirstLayout()` を 1 回だけ呼ぶ
+  - 使用先では `initState` をオーバーライドせず、非同期処理は `afterFirstLayout()` から `unawaited` で呼ぶ
 
 ## エラーハンドリング
 
@@ -166,3 +170,4 @@ FetchWeatherUseCase createUseCase(YumemiWeather api) {
   - 正常系・異常系は名前付きコンストラクタ（`FakeYumemiWeather.returns` / `.throws`）で作り分ける
 - `Result` の検証には `test/helper/result_matchers.dart` の `isSuccess` / `isFailure<E>` を使う
 - 入力と期待値の組が複数あるケースは、`Map` と `for` でテストケースを生成する
+- 画面をまたいで使う UI の仕組み（`AfterLayoutMixin` など）は、テスト用の Widget に組み込んで `testWidgets` で振る舞いを検証する
