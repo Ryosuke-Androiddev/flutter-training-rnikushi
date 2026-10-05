@@ -4,10 +4,8 @@ import 'package:flutter_training/domain/model/app_error.dart';
 import 'package:flutter_training/domain/model/result.dart';
 import 'package:flutter_training/domain/weather/model/weather_condition.dart';
 
-final weatherViewModelProvider =
-    NotifierProvider.autoDispose<WeatherViewModel, WeatherCondition?>(
-      WeatherViewModel.new,
-    );
+final NotifierProvider<WeatherViewModel, WeatherCondition?>
+weatherViewModelProvider = NotifierProvider.autoDispose(WeatherViewModel.new);
 
 class WeatherViewModel extends Notifier<WeatherCondition?> {
   @override

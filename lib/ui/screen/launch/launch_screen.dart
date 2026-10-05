@@ -18,8 +18,8 @@ class _LaunchScreenState extends State<LaunchScreen> {
   }
 
   Future<void> _showWeatherScreen() async {
+    await WidgetsBinding.instance.endOfFrame;
     while (mounted) {
-      await WidgetsBinding.instance.endOfFrame;
       await Future<void>.delayed(const Duration(milliseconds: 500));
       if (!mounted) {
         return;
@@ -27,7 +27,7 @@ class _LaunchScreenState extends State<LaunchScreen> {
       final route = MaterialPageRoute<void>(
         builder: (_) => const WeatherScreen(),
       );
-      unawaited(Navigator.of(context).push(route));
+      Navigator.of(context).push(route);
       await route.completed;
     }
   }
