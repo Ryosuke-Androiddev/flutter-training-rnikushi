@@ -4,11 +4,11 @@ import 'package:yumemi_weather/yumemi_weather.dart';
 class FakeYumemiWeather extends Fake implements YumemiWeather {
   FakeYumemiWeather.returns(String weather) : _fetch = (() => weather);
 
-  FakeYumemiWeather.throws(Exception exception)
-    : _fetch = (() => throw exception);
+  FakeYumemiWeather.throws(YumemiWeatherError error)
+    : _fetch = (() => Error.throwWithStackTrace(error, StackTrace.current));
 
   final String Function() _fetch;
 
   @override
-  String fetchSimpleWeather() => _fetch();
+  String fetchThrowsWeather(String area) => _fetch();
 }

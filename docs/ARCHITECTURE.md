@@ -55,7 +55,7 @@ lib/
 ├── domain/
 │   ├── model/                     # 機能をまたいで使う共通モデル
 │   │   ├── result.dart            # Result<T>（Success / Failure）
-│   │   └── app_error.dart         # AppError（UnknownError ...）
+│   │   └── app_error.dart         # AppError（InvalidParameterError / UnknownError）
 │   └── weather/                   # 機能単位
 │       ├── model/                 # Domain Model（WeatherCondition など）
 │       ├── exception/             # Domain で扱う例外
@@ -67,7 +67,7 @@ lib/
 └── ui/
     └── screen/
         ├── launch/                # 起動時の画面（StatefulWidget）と AfterLayoutMixin
-        └── weather/               # Screen と ViewModel
+        └── weather/               # Screen・ViewModel・UiState と表示用の拡張メソッド
 
 test/
 ├── domain/weather/usecase/        # UseCase のユニットテスト
@@ -117,21 +117,26 @@ sequenceDiagram
   participant R as RepositoryImpl
   participant API as YumemiWeather
 
-  VM->>UC: call()
-  UC->>R: fetchSimpleWeather()
-  R->>API: fetchSimpleWeather()
-  API-->>R: "sunny" / 想定外の値
+  VM->>UC: call(area: area)
+  UC->>R: fetchWeatherCondition(area: area)
+  R->>API: fetchThrowsWeather(area)
   alt 正常
-    R-->>UC: WeatherCondition
+    API-->>R: "sunny" / 想定外の値
+    R-->>UC: WeatherCondition / throw Domain の例外
+  else API のエラー
+    API--xR: throw YumemiWeatherError
+    R--xUC: throw Domain の例外
+  end
+  alt 成功
     UC-->>VM: Success(value)
   else 例外
-    R--xUC: throw Exception
     UC-->>VM: Failure(AppError)
   end
   VM->>VM: switch で画面状態へ変換
 ```
 
-- **RepositoryImpl は try-catch しない。** 想定外のレスポンスは Domain の例外（例: `UnknownWeatherConditionException`）として throw する
+- **RepositoryImpl は外部 API のエラーを Domain の例外に変換する目的でのみ try-catch する。** 外部パッケージのエラー型（例: `YumemiWeatherError`）を Domain に漏らさないため、`on` 節で catch して Domain の例外（例: `WeatherInvalidParameterException`）に置き換えて throw する。それ以外の処理は catch しない
+  - 想定外のレスポンスは Domain の例外（例: `UnknownWeatherConditionException`）として throw する
 - **UseCaseImpl で try-catch し、例外を `Result` に変換する。** 例外の種類ごとに対応する `AppError` にマッピングする
   - yumemi_lints の `avoid_catches_without_on_clauses` に従い、`on` 節で型を指定して catch する
   - `Error`（プログラミングエラー）は catch しない（`avoid_catching_errors`）
@@ -146,11 +151,21 @@ final class Success<T> extends Result<T> { const Success(this.value); final T va
 final class Failure<T> extends Result<T> { const Failure(this.error); final AppError error; }
 
 sealed class AppError { const AppError(); }
+final class InvalidParameterError extends AppError { const InvalidParameterError(); }
 final class UnknownError extends AppError { const UnknownError(); }
 ```
 
-- エラーの種類を増やすときは `AppError` のサブクラスを追加し、UseCaseImpl のマッピングと ViewModel の分岐を更新する
-- 失敗時の画面状態（例: ViewModel の状態を `null` にして `Placeholder` を表示）は ViewModel で決める。Domain Model には「未取得・失敗」を表す値（`unknown` など）を持たせない
+- エラーの種類を増やすときは `AppError` のサブクラスを追加し、UseCaseImpl のマッピングと UI のメッセージ（`AppErrorX.message`）の分岐を更新する
+- 失敗時の画面状態は ViewModel で決める。Domain Model には「未取得・失敗」を表す値（`unknown` など）を持たせない
+
+### エラーの表示
+
+- ViewModel の状態は画面単位の UiState（例: `WeatherUiState`）にまとめ、表示中のデータ（`weatherCondition`）と未表示のエラー（`error`）を別のフィールドで持つ
+  - 取得に失敗しても表示中のデータは保持し、`error` だけを設定する
+- エラーメッセージは UI の拡張メソッド（`AppErrorX.message`）で `AppError` を `switch` して決める
+- Screen は `ref.listen` で `error` を購読し、`null` 以外になったら `showDialog` で `AlertDialog` を表示する
+  - ダイアログを閉じたら ViewModel の `clearError()` を呼び、`error` を `null` に戻す（同じエラーが続いても再度表示できるようにするため）
+  - 描画に使う値は `select` で必要なフィールドだけ `watch` する
 
 ## テスト方針
 
@@ -168,6 +183,7 @@ FetchWeatherUseCase createUseCase(YumemiWeather api) {
 
 - Fake は `flutter_test` の `Fake` を継承し、対象のクラスを `implements` する（`test/fake/`）
   - 正常系・異常系は名前付きコンストラクタ（`FakeYumemiWeather.returns` / `.throws`）で作り分ける
+  - `Exception` を実装しないエラー（`YumemiWeatherError` など）を投げるときは、`only_throw_errors` に従い `Error.throwWithStackTrace` を使う
 - `Result` の検証には `test/helper/result_matchers.dart` の `isSuccess` / `isFailure<E>` を使う
 - 入力と期待値の組が複数あるケースは、`Map` と `for` でテストケースを生成する
 - 画面をまたいで使う UI の仕組み（`AfterLayoutMixin` など）は、テスト用の Widget に組み込んで `testWidgets` で振る舞いを検証する
