@@ -3,9 +3,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_training/ui/screen/launch/after_layout_mixin.dart';
 
 class _TestWidget extends StatefulWidget {
-  const _TestWidget(this._onAfterFirstLayout);
+  const _TestWidget(this._onAfterFirstLayout, [this._onBuild]);
 
   final void Function(Size? size) _onAfterFirstLayout;
+  final void Function()? _onBuild;
 
   @override
   State<_TestWidget> createState() => _TestWidgetState();
@@ -17,7 +18,10 @@ class _TestWidgetState extends State<_TestWidget>
   void afterFirstLayout() => widget._onAfterFirstLayout(context.size);
 
   @override
-  Widget build(BuildContext context) => const SizedBox(width: 100, height: 50);
+  Widget build(BuildContext context) {
+    widget._onBuild?.call();
+    return const SizedBox(width: 100, height: 50);
+  }
 }
 
 void main() {
@@ -33,12 +37,14 @@ void main() {
 
   testWidgets('再ビルドされても afterFirstLayout は 1 回だけ呼ばれる', (tester) async {
     final sizes = <Size?>[];
-    final widget = Center(child: _TestWidget(sizes.add));
+    var buildCount = 0;
+    void onBuild() => buildCount++;
 
-    await tester.pumpWidget(widget);
-    await tester.pumpWidget(widget);
+    await tester.pumpWidget(Center(child: _TestWidget(sizes.add, onBuild)));
+    await tester.pumpWidget(Center(child: _TestWidget(sizes.add, onBuild)));
     await tester.pump();
 
+    expect(buildCount, 2);
     expect(sizes, hasLength(1));
   });
 }
