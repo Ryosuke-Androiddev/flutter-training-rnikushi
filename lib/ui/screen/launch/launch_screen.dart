@@ -26,9 +26,6 @@ class _LaunchScreenState extends State<LaunchScreen> {
       );
       unawaited(Navigator.of(context).push(route));
       await route.completed;
-      await Navigator.of(context).push(
-        MaterialPageRoute<void>(builder: (_) => const WeatherScreen()),
-      );
     }
   }
 
