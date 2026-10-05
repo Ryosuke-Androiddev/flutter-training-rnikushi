@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_training/ui/screen/launch/after_layout_mixin.dart';
 import 'package:flutter_training/ui/screen/weather/weather_screen.dart';
 
 class LaunchScreen extends StatefulWidget {
@@ -10,15 +11,14 @@ class LaunchScreen extends StatefulWidget {
   State<LaunchScreen> createState() => _LaunchScreenState();
 }
 
-class _LaunchScreenState extends State<LaunchScreen> {
+class _LaunchScreenState extends State<LaunchScreen>
+    with AfterLayoutMixin<LaunchScreen> {
   @override
-  void initState() {
-    super.initState();
+  void afterFirstLayout() {
     unawaited(_showWeatherScreen());
   }
 
   Future<void> _showWeatherScreen() async {
-    await WidgetsBinding.instance.endOfFrame;
     while (mounted) {
       await Future<void>.delayed(const Duration(milliseconds: 500));
       if (!mounted) {
