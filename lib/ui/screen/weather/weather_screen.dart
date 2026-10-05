@@ -54,7 +54,7 @@ class WeatherScreen extends ConsumerWidget {
                       children: [
                         Expanded(
                           child: TextButton(
-                            onPressed: () {},
+                            onPressed: () => Navigator.of(context).pop(),
                             child: const Text('Close'),
                           ),
                         ),
