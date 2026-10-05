@@ -4,7 +4,7 @@ import 'package:flutter_training/domain/model/app_error.dart';
 import 'package:flutter_training/domain/model/result.dart';
 import 'package:flutter_training/domain/weather/model/weather_condition.dart';
 
-final NotifierProvider<WeatherViewModel, WeatherCondition?>
+final weatherViewModelProvider =
     NotifierProvider.autoDispose<WeatherViewModel, WeatherCondition?>(
       WeatherViewModel.new,
     );
