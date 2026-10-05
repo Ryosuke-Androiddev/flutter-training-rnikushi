@@ -33,9 +33,9 @@ flowchart LR
 |----------|------|------------------|
 | UI（Screen） | 状態の描画とユーザー操作の受付 | ViewModel |
 | UI（ViewModel） | 画面状態の保持、UseCase の呼び出し、`Result` から画面状態への変換 | UseCase（interface 型の Provider）、Domain Model |
-| Domain（UseCase） | ユースケースの実行、例外を `Result` / `AppError` に変換 | Repository（interface）、Domain Model |
+| Domain（UseCase） | ユースケースの実行（Repository の `Result` を返す） | Repository（interface）、Domain Model |
 | Domain（Repository interface） | データ取得の抽象 | Domain Model |
-| Data（RepositoryImpl） | 外部 API の呼び出しと、レスポンスから Domain Model への変換 | 外部パッケージ、Repository（interface）、Domain Model |
+| Data（RepositoryImpl） | 外部 API の呼び出しと、レスポンス・エラーから `Result`（Domain Model / `AppError`）への変換 | 外部パッケージ、Repository（interface）、Domain Model |
 | DI | 具象クラスの組み立て（Provider 定義） | 全レイヤー |
 
 ### 依存のルール
@@ -58,7 +58,6 @@ lib/
 │   │   └── app_error.dart         # AppError（InvalidParameterError / UnknownError）
 │   └── weather/                   # 機能単位
 │       ├── model/                 # Domain Model（WeatherCondition など）
-│       ├── exception/             # Domain で扱う例外
 │       ├── repository/            # Repository interface
 │       └── usecase/               # UseCase interface と実装
 ├── data/
@@ -121,27 +120,26 @@ sequenceDiagram
   UC->>R: fetchWeatherCondition(area: area)
   R->>API: fetchThrowsWeather(area)
   alt 正常
-    API-->>R: "sunny" / 想定外の値
-    R-->>UC: WeatherCondition / throw Domain の例外
+    API-->>R: "sunny"
+    R-->>UC: Success(WeatherCondition)
+  else 想定外の値
+    API-->>R: "snowy" など
+    R-->>UC: Failure(UnknownError)
   else API のエラー
     API--xR: throw YumemiWeatherError
-    R--xUC: throw Domain の例外
+    R-->>UC: Failure(AppError)
   end
-  alt 成功
-    UC-->>VM: Success(value)
-  else 例外
-    UC-->>VM: Failure(AppError)
-  end
+  UC-->>VM: Result<WeatherCondition>
   VM->>VM: switch で画面状態へ変換
 ```
 
-- **RepositoryImpl は外部 API のエラーを Domain の例外に変換する目的でのみ try-catch する。** 外部パッケージのエラー型（例: `YumemiWeatherError`）を Domain に漏らさないため、`on` 節で catch して Domain の例外（例: `WeatherInvalidParameterException`）に置き換えて throw する。それ以外の処理は catch しない
-  - 想定外のレスポンスは Domain の例外（例: `UnknownWeatherConditionException`）として throw する
-- **UseCaseImpl で try-catch し、例外を `Result` に変換する。** 例外の種類ごとに対応する `AppError` にマッピングする
+- **RepositoryImpl は外部 API の結果を `Result` にマッピングして返す。** Domain の例外として throw し直さない
+  - 外部パッケージのエラー型（例: `YumemiWeatherError`）は RepositoryImpl で catch し、対応する `AppError` の `Failure` にして返す。外部パッケージの型を Domain に漏らさない
+  - 想定外のレスポンスも `Failure(UnknownError())` として返す
   - yumemi_lints の `avoid_catches_without_on_clauses` に従い、`on` 節で型を指定して catch する
   - `Error`（プログラミングエラー）は catch しない（`avoid_catching_errors`）
+- **UseCaseImpl は Repository の `Result` を受け取り、必要に応じて組み合わせて返す。** 例外の変換は行わない
 - **ViewModel は `Result` を `switch` で網羅的に処理する。** `Result` と `AppError` は `sealed class` なので、新しい `AppError` を追加するとコンパイラが未処理の分岐を検出する
-- 例外として throw するクラスは `Exception` を実装する（`only_throw_errors`）
 
 ### Domain の共通モデル
 
@@ -155,7 +153,7 @@ final class InvalidParameterError extends AppError { const InvalidParameterError
 final class UnknownError extends AppError { const UnknownError(); }
 ```
 
-- エラーの種類を増やすときは `AppError` のサブクラスを追加し、UseCaseImpl のマッピングと UI のメッセージ（`AppErrorX.message`）の分岐を更新する
+- エラーの種類を増やすときは `AppError` のサブクラスを追加し、RepositoryImpl のマッピングと UI のメッセージ（`AppErrorX.message`）の分岐を更新する
 - 失敗時の画面状態は ViewModel で決める。Domain Model には「未取得・失敗」を表す値（`unknown` など）を持たせない
 
 ### エラーの表示
@@ -169,7 +167,7 @@ final class UnknownError extends AppError { const UnknownError(); }
 
 ## テスト方針
 
-- **ユニットテストは UseCase に対して書く。** Repository は本物の `RepositoryImpl` を使い、外部 API だけを Fake に差し替える。これで UseCase と Repository の振る舞い（レスポンスの変換・例外から `Result` への変換）をまとめて保証する
+- **ユニットテストは UseCase に対して書く。** Repository は本物の `RepositoryImpl` を使い、外部 API だけを Fake に差し替える。これで UseCase と Repository の振る舞い（レスポンス・API のエラーから `Result` への変換）をまとめて保証する
 - 依存の差し替えは `ProviderContainer.test(overrides: [...])` と `overrideWithValue` で行う
 
 ```dart
