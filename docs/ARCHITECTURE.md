@@ -66,6 +66,7 @@ lib/
 │       └── weather/               # API を使う RepositoryImpl
 └── ui/
     └── screen/
+        ├── launch/                # 起動時の画面（StatefulWidget）
         └── weather/               # Screen と ViewModel
 
 test/
@@ -90,11 +91,18 @@ final weatherRepositoryProvider = Provider<WeatherRepository>(
 
 - 外部 API のクライアント（`YumemiWeather`）も Provider にして、テストで差し替えられるようにする
 - ViewModel は `Notifier<State>` を継承し、`NotifierProvider` を ViewModel と同じファイルに定義する
+  - 画面の状態は画面を閉じたら破棄するため、`NotifierProvider.autoDispose` で定義する
   - 初期状態は `build()` で返す
   - UseCase は `ref.read` で取得する（イベントハンドラ内で使うため）
   - ViewModel のメソッド名は UI 操作名（`reload`）ではなく、行う処理（`fetchWeather`）で命名する
 - Screen は `ConsumerWidget` とし、状態は `ref.watch(xxxViewModelProvider)`、操作は `ref.read(xxxViewModelProvider.notifier).method()` で呼ぶ
   - `build` 内で直接 `ref.read` を呼ばず、`onPressed` などのコールバック内で呼ぶ
+- 状態も UseCase も持たない画面（`LaunchScreen` など）は ViewModel を作らず、`StatefulWidget` で実装してよい
+
+## 画面遷移
+
+- 画面遷移は Screen で `Navigator` の命令型 API（`push` / `pop`）を使って行う。ViewModel では画面遷移を扱わない
+- `await` の後に `BuildContext` を使うときは、先に `mounted` を確認する
 
 ## エラーハンドリング
 
