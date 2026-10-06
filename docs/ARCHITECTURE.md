@@ -182,7 +182,7 @@ FetchWeatherUseCase createUseCase(YumemiWeather api) {
 ```
 
 - Fake は `flutter_test` の `Fake` を継承し、対象のクラスを `implements` する（`test/fake/`）
-  - 正常系・異常系は名前付きコンストラクタ（`FakeYumemiWeather.returns` / `.throws`）で作り分ける
+  - 正常系・異常系は名前付きコンストラクタ（`FakeYumemiWeather.returns` / `.throws`）で作り分ける。成功から失敗への遷移を確かめるときは `.returnsThenThrows` を使う（最後の応答を以降も繰り返す）
   - `Exception` を実装しないエラー（`YumemiWeatherError` など）を投げるときは、`only_throw_errors` に従い `Error.throwWithStackTrace` を使う
 - `Result` の検証には `test/helper/result_matchers.dart` の `isSuccess` / `isFailure<E>` を使う
 - 入力と期待値の組が複数あるケースは、`Map` と `for` でテストケースを生成する

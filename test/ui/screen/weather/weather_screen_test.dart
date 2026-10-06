@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_training/di/weather_providers.dart';
 import 'package:flutter_training/ui/screen/weather/weather_screen.dart';
@@ -89,6 +90,27 @@ void main() {
       await tapReload(tester);
 
       expect(find.byType(AlertDialog), findsOneWidget);
+    });
+
+    testWidgets('取得に失敗しても、表示中の天気を残す', (tester) async {
+      await pumpWeatherScreen(
+        tester,
+        FakeYumemiWeather.returnsThenThrows(
+          'sunny',
+          YumemiWeatherError.unknown,
+        ),
+      );
+
+      await tapReload(tester);
+
+      expect(find.byType(SvgPicture), findsOneWidget);
+
+      await tapReload(tester);
+      await tester.tap(find.text('OK'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(SvgPicture), findsOneWidget);
+      expect(find.byType(Placeholder), findsNothing);
     });
 
     testWidgets('取得に成功するとダイアログを表示しない', (tester) async {
