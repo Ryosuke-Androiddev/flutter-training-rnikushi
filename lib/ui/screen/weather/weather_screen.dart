@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -16,9 +14,13 @@ class WeatherScreen extends ConsumerWidget {
     ref.listen(weatherViewModelProvider.select((state) => state.error), (
       _,
       error,
-    ) {
-      if (error != null) {
-        unawaited(_showErrorDialog(context, ref, error));
+    ) async {
+      if (error == null) {
+        return;
+      }
+      await _showErrorDialog(context, error);
+      if (context.mounted) {
+        ref.read(weatherViewModelProvider.notifier).clearError();
       }
     });
 
@@ -93,27 +95,18 @@ class WeatherScreen extends ConsumerWidget {
     );
   }
 
-  Future<void> _showErrorDialog(
-    BuildContext context,
-    WidgetRef ref,
-    AppError error,
-  ) async {
-    await showDialog<void>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('エラー'),
-        content: Text(error.message),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('OK'),
-          ),
-        ],
-      ),
-    );
-    if (!context.mounted) {
-      return;
-    }
-    ref.read(weatherViewModelProvider.notifier).clearError();
-  }
+  Future<void> _showErrorDialog(BuildContext context, AppError error) =>
+      showDialog<void>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('エラー'),
+          content: Text(error.message),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
 }
