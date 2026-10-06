@@ -33,9 +33,9 @@ flowchart LR
 |----------|------|------------------|
 | UI（Screen） | 状態の描画とユーザー操作の受付 | ViewModel |
 | UI（ViewModel） | 画面状態の保持、UseCase の呼び出し、`Result` から画面状態への変換 | UseCase（interface 型の Provider）、Domain Model |
-| Domain（UseCase） | ユースケースの実行、例外を `Result` / `AppError` に変換 | Repository（interface）、Domain Model |
+| Domain（UseCase） | ユースケースの実行（Repository の `Result` を返す） | Repository（interface）、Domain Model |
 | Domain（Repository interface） | データ取得の抽象 | Domain Model |
-| Data（RepositoryImpl） | 外部 API の呼び出しと、レスポンスから Domain Model への変換 | 外部パッケージ、Repository（interface）、Domain Model |
+| Data（RepositoryImpl） | 外部 API の呼び出しと、レスポンス・エラーから `Result`（Domain Model / `AppError`）への変換 | 外部パッケージ、Repository（interface）、Domain Model |
 | DI | 具象クラスの組み立て（Provider 定義） | 全レイヤー |
 
 ### 依存のルール
@@ -55,10 +55,9 @@ lib/
 ├── domain/
 │   ├── model/                     # 機能をまたいで使う共通モデル
 │   │   ├── result.dart            # Result<T>（Success / Failure）
-│   │   └── app_error.dart         # AppError（UnknownError ...）
+│   │   └── app_error.dart         # AppError（InvalidParameterError / UnknownError）
 │   └── weather/                   # 機能単位
 │       ├── model/                 # Domain Model（WeatherCondition など）
-│       ├── exception/             # Domain で扱う例外
 │       ├── repository/            # Repository interface
 │       └── usecase/               # UseCase interface と実装
 ├── data/
@@ -67,11 +66,12 @@ lib/
 └── ui/
     └── screen/
         ├── launch/                # 起動時の画面（StatefulWidget）と AfterLayoutMixin
-        └── weather/               # Screen と ViewModel
+        └── weather/               # Screen・ViewModel・UiState と表示用の拡張メソッド
 
 test/
 ├── domain/weather/usecase/        # UseCase のユニットテスト
 ├── ui/screen/launch/              # AfterLayoutMixin の Widget テスト
+├── ui/screen/weather/             # WeatherScreen の Widget テスト（エラーダイアログ）
 ├── fake/                          # 外部 API の Fake
 └── helper/                        # テスト用 Matcher など
 ```
@@ -117,26 +117,31 @@ sequenceDiagram
   participant R as RepositoryImpl
   participant API as YumemiWeather
 
-  VM->>UC: call()
-  UC->>R: fetchSimpleWeather()
-  R->>API: fetchSimpleWeather()
-  API-->>R: "sunny" / 想定外の値
+  VM->>UC: call(area: area)
+  UC->>R: fetchWeatherCondition(area: area)
+  R->>API: fetchThrowsWeather(area)
   alt 正常
-    R-->>UC: WeatherCondition
-    UC-->>VM: Success(value)
-  else 例外
-    R--xUC: throw Exception
-    UC-->>VM: Failure(AppError)
+    API-->>R: "sunny"
+    R-->>UC: Success(WeatherCondition)
+  else 想定外の値
+    API-->>R: "snowy" など
+    R-->>UC: Failure(UnknownError)
+  else API のエラー
+    API--xR: throw YumemiWeatherError
+    R-->>UC: Failure(AppError)
   end
+  UC-->>VM: Result<WeatherCondition>
   VM->>VM: switch で画面状態へ変換
 ```
 
-- **RepositoryImpl は try-catch しない。** 想定外のレスポンスは Domain の例外（例: `UnknownWeatherConditionException`）として throw する
-- **UseCaseImpl で try-catch し、例外を `Result` に変換する。** 例外の種類ごとに対応する `AppError` にマッピングする
+- **RepositoryImpl は外部 API の結果を `Result` にマッピングして返す。** Domain の例外として throw し直さない
+  - 外部パッケージのエラー型（例: `YumemiWeatherError`）は RepositoryImpl で catch し、対応する `AppError` の `Failure` にして返す。外部パッケージの型を Domain に漏らさない
+  - 想定外のレスポンスも `Failure(UnknownError())` として返す
   - yumemi_lints の `avoid_catches_without_on_clauses` に従い、`on` 節で型を指定して catch する
   - `Error`（プログラミングエラー）は catch しない（`avoid_catching_errors`）
+- **UseCaseImpl は Repository の `Result` を受け取り、必要に応じて組み合わせて返す。** 例外の変換は行わない
+  - 今は Repository への委譲だけの UseCase もあるが、ViewModel が Repository に直接依存しないようにするため、そして複数の Repository の組み合わせやビジネスロジックを足す場所として、UseCase を残す
 - **ViewModel は `Result` を `switch` で網羅的に処理する。** `Result` と `AppError` は `sealed class` なので、新しい `AppError` を追加するとコンパイラが未処理の分岐を検出する
-- 例外として throw するクラスは `Exception` を実装する（`only_throw_errors`）
 
 ### Domain の共通モデル
 
@@ -146,15 +151,25 @@ final class Success<T> extends Result<T> { const Success(this.value); final T va
 final class Failure<T> extends Result<T> { const Failure(this.error); final AppError error; }
 
 sealed class AppError { const AppError(); }
+final class InvalidParameterError extends AppError { const InvalidParameterError(); }
 final class UnknownError extends AppError { const UnknownError(); }
 ```
 
-- エラーの種類を増やすときは `AppError` のサブクラスを追加し、UseCaseImpl のマッピングと ViewModel の分岐を更新する
-- 失敗時の画面状態（例: ViewModel の状態を `null` にして `Placeholder` を表示）は ViewModel で決める。Domain Model には「未取得・失敗」を表す値（`unknown` など）を持たせない
+- エラーの種類を増やすときは `AppError` のサブクラスを追加し、RepositoryImpl のマッピングと UI のメッセージ（`AppErrorX.message`）の分岐を更新する
+- 失敗時の画面状態は ViewModel で決める。Domain Model には「未取得・失敗」を表す値（`unknown` など）を持たせない
+
+### エラーの表示
+
+- ViewModel の状態は画面単位の UiState（例: `WeatherUiState`）にまとめ、表示中のデータ（`weatherCondition`）と未表示のエラー（`error`）を別のフィールドで持つ
+  - 取得に失敗しても表示中のデータは保持し、`error` だけを設定する
+- エラーメッセージは UI の拡張メソッド（`AppErrorX.message`）で `AppError` を `switch` して決める
+- Screen は `ref.listen` で `error` を購読し、`null` 以外になったら `showDialog` で `AlertDialog` を表示する
+  - ダイアログを閉じたら ViewModel の `clearError()` を呼び、`error` を `null` に戻す（同じエラーが続いても再度表示できるようにするため）
+  - 描画に使う値は `select` で必要なフィールドだけ `watch` する
 
 ## テスト方針
 
-- **ユニットテストは UseCase に対して書く。** Repository は本物の `RepositoryImpl` を使い、外部 API だけを Fake に差し替える。これで UseCase と Repository の振る舞い（レスポンスの変換・例外から `Result` への変換）をまとめて保証する
+- **ユニットテストは UseCase に対して書く。** Repository は本物の `RepositoryImpl` を使い、外部 API だけを Fake に差し替える。これで UseCase と Repository の振る舞い（レスポンス・API のエラーから `Result` への変換）をまとめて保証する
 - 依存の差し替えは `ProviderContainer.test(overrides: [...])` と `overrideWithValue` で行う
 
 ```dart
@@ -167,7 +182,9 @@ FetchWeatherUseCase createUseCase(YumemiWeather api) {
 ```
 
 - Fake は `flutter_test` の `Fake` を継承し、対象のクラスを `implements` する（`test/fake/`）
-  - 正常系・異常系は名前付きコンストラクタ（`FakeYumemiWeather.returns` / `.throws`）で作り分ける
+  - 正常系・異常系は名前付きコンストラクタ（`FakeYumemiWeather.returns` / `.throws`）で作り分ける。成功から失敗への遷移を確かめるときは `.returnsThenThrows` を使う（最後の応答を以降も繰り返す）
+  - `Exception` を実装しないエラー（`YumemiWeatherError` など）を投げるときは、`only_throw_errors` に従い `Error.throwWithStackTrace` を使う
 - `Result` の検証には `test/helper/result_matchers.dart` の `isSuccess` / `isFailure<E>` を使う
 - 入力と期待値の組が複数あるケースは、`Map` と `for` でテストケースを生成する
 - 画面をまたいで使う UI の仕組み（`AfterLayoutMixin` など）は、テスト用の Widget に組み込んで `testWidgets` で振る舞いを検証する
+- 画面の振る舞いのうち、状態と UI の連携に依存するもの（エラーダイアログの表示と、閉じた後の再表示など）は、Screen の Widget テストで検証する。差し替えるのは UseCase のテストと同じく外部 API の Fake だけにする（`ProviderScope(overrides: [...])`）

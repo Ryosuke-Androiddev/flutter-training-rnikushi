@@ -87,15 +87,18 @@ description: flutter-training リポジトリのプルリクエストをレビ�
   - Screen が `ConsumerWidget` で、状態を `ref.watch`、操作を `ref.read(...notifier)` で扱っているか
   - `build` 内で直接 `ref.read` していないか、状態を持つインスタンスを `build` 内で生成していないか
 - **エラーハンドリング**
-  - RepositoryImpl に try-catch がなく、想定外のレスポンスを Domain の例外として throw しているか
-  - UseCaseImpl で `on` 節付きの catch により例外を `Result` / `AppError` に変換しているか（`Error` を catch していないか）
-  - ViewModel が `Result` / `AppError` を `switch` で網羅的に処理しているか（`default` や `_` で分岐を潰していないか）
-  - `AppError` を追加した場合、UseCaseImpl のマッピングと ViewModel の分岐が更新されているか
+  - RepositoryImpl が外部 API のレスポンスとエラーを `Result` / `AppError` にマッピングして返しているか（Domain の例外として throw し直していないか）
+  - 外部パッケージのエラー型（`YumemiWeatherError` など）を RepositoryImpl の `on` 節付きの catch で受け、Domain に漏らしていないか（`Error` を catch していないか）
+  - UseCaseImpl が例外の変換をせず、Repository の `Result` を返しているか
+  - ViewModel・UI が `Result` / `AppError` を `switch` で網羅的に処理しているか（`default` や `_` で分岐を潰していないか）
+  - `AppError` を追加した場合、RepositoryImpl のマッピングと UI のメッセージ（`AppErrorX.message`）の分岐が更新されているか
+  - エラーを表示する画面では、表示中のデータとエラーを UiState の別のフィールドで持ち、ダイアログを閉じたら `error` を `null` に戻しているか
 - **テスト**
   - UseCase に対するユニットテストがあり、Repository は本物、外部 API だけを Fake にしているか
   - 依存の差し替えが `ProviderContainer.test(overrides: [...])` で行われているか
   - 正常系だけでなく、想定外のレスポンス・例外発生時の異常系もテストしているか
   - `Result` の検証に `isSuccess` / `isFailure<E>` を使っているか
+  - 状態と UI の連携に依存する振る舞い（エラーダイアログの表示・再表示など）を、Screen の Widget テストで検証しているか
 
 ## その他
 

@@ -26,7 +26,7 @@ fvm flutter run -d <device>
 - レイヤーは UI（Screen / ViewModel）→ Domain（UseCase / Repository interface）← Data（RepositoryImpl）
 - ViewModel は UseCase だけを参照し、Repository を直接参照しない
 - 状態管理と DI は Riverpod（手書きの Provider）。Provider は `lib/di/` に interface 型で定義する
-- RepositoryImpl は try-catch せず、UseCaseImpl で例外を `Result`（`Success` / `Failure(AppError)`）に変換する
+- RepositoryImpl は外部 API のレスポンスとエラーを `Result`（`Success` / `Failure(AppError)`）にマッピングして返し、Domain の例外として throw し直さない
 - ユニットテストは UseCase に対して書き、外部 API だけを Fake に差し替える
 
 ## コーディング規約

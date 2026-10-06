@@ -18,6 +18,8 @@ FetchWeatherUseCase createUseCase(YumemiWeather api) {
 
 void main() {
   group('FetchWeatherUseCaseImpl', () {
+    const area = 'tokyo';
+
     const successCases = {
       'sunny': WeatherCondition.sunny,
       'cloudy': WeatherCondition.cloudy,
@@ -29,24 +31,44 @@ void main() {
       test('API が "$weather" を返すと Success($expected) を返す', () {
         final useCase = createUseCase(FakeYumemiWeather.returns(weather));
 
-        expect(useCase(), isSuccess(expected));
+        expect(useCase(area: area), isSuccess(expected));
       });
     }
+
+    test('指定した area で API を呼び出す', () {
+      final api = FakeYumemiWeather.returns('sunny');
+      final useCase = createUseCase(api);
+
+      useCase(area: area);
+
+      expect(api.requestedAreas, [area]);
+    });
 
     for (final weather in ['snowy', 'unknown', '']) {
       test('API が想定外の "$weather" を返すと UnknownError の Failure を返す', () {
         final useCase = createUseCase(FakeYumemiWeather.returns(weather));
 
-        expect(useCase(), isFailure<UnknownError>());
+        expect(useCase(area: area), isFailure<UnknownError>());
       });
     }
 
-    test('API が例外を投げると UnknownError の Failure を返す', () {
+    test(
+      'API が invalidParameter を投げると InvalidParameterError の Failure を返す',
+      () {
+        final useCase = createUseCase(
+          FakeYumemiWeather.throws(YumemiWeatherError.invalidParameter),
+        );
+
+        expect(useCase(area: area), isFailure<InvalidParameterError>());
+      },
+    );
+
+    test('API が unknown を投げると UnknownError の Failure を返す', () {
       final useCase = createUseCase(
-        FakeYumemiWeather.throws(Exception('error')),
+        FakeYumemiWeather.throws(YumemiWeatherError.unknown),
       );
 
-      expect(useCase(), isFailure<UnknownError>());
+      expect(useCase(area: area), isFailure<UnknownError>());
     });
   });
 }
