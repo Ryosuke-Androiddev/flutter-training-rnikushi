@@ -25,7 +25,9 @@ class WeatherScreen extends ConsumerWidget {
     });
 
     final weatherCondition = ref.watch(
-      weatherViewModelProvider.select((state) => state.weatherCondition),
+      weatherViewModelProvider.select(
+        (state) => state.weatherForecast?.condition,
+      ),
     );
     final labelLarge = Theme.of(context).textTheme.labelLarge;
 

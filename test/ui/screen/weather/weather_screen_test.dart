@@ -97,7 +97,7 @@ void main() {
       await pumpWeatherScreen(
         tester,
         FakeYumemiWeather.returnsThenThrows(
-          'sunny',
+          weatherResponseJson(),
           YumemiWeatherError.unknown,
         ),
       );
@@ -115,7 +115,10 @@ void main() {
     });
 
     testWidgets('取得に成功するとダイアログを表示しない', (tester) async {
-      await pumpWeatherScreen(tester, FakeYumemiWeather.returns('sunny'));
+      await pumpWeatherScreen(
+        tester,
+        FakeYumemiWeather.returns(weatherResponseJson()),
+      );
 
       await tapReload(tester);
 

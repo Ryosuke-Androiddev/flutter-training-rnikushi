@@ -13,16 +13,20 @@ class WeatherViewModel extends Notifier<WeatherUiState> {
   WeatherUiState build() => const WeatherUiState();
 
   void fetchWeather() {
-    state = switch (ref.read(fetchWeatherUseCaseProvider)(area: _area)) {
-      Success(:final value) => WeatherUiState(weatherCondition: value),
+    final result = ref.read(fetchWeatherUseCaseProvider)(
+      area: _area,
+      date: DateTime.now(),
+    );
+    state = switch (result) {
+      Success(:final value) => WeatherUiState(weatherForecast: value),
       Failure(:final error) => WeatherUiState(
-        weatherCondition: state.weatherCondition,
+        weatherForecast: state.weatherForecast,
         error: error,
       ),
     };
   }
 
   void clearError() {
-    state = WeatherUiState(weatherCondition: state.weatherCondition);
+    state = WeatherUiState(weatherForecast: state.weatherForecast);
   }
 }

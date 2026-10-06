@@ -1,9 +1,9 @@
 import 'package:flutter_training/domain/model/app_error.dart';
-import 'package:flutter_training/domain/weather/model/weather_condition.dart';
+import 'package:flutter_training/domain/weather/model/weather_forecast.dart';
 
 final class WeatherUiState {
-  const WeatherUiState({this.weatherCondition, this.error});
+  const WeatherUiState({this.weatherForecast, this.error});
 
-  final WeatherCondition? weatherCondition;
+  final WeatherForecast? weatherForecast;
   final AppError? error;
 }

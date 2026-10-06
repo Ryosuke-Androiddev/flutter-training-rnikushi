@@ -1,8 +1,11 @@
+import 'dart:convert';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_training/di/weather_providers.dart';
 import 'package:flutter_training/domain/model/app_error.dart';
 import 'package:flutter_training/domain/weather/model/weather_condition.dart';
+import 'package:flutter_training/domain/weather/model/weather_forecast.dart';
 import 'package:flutter_training/domain/weather/usecase/fetch_weather_use_case.dart';
 import 'package:yumemi_weather/yumemi_weather.dart';
 
@@ -19,6 +22,7 @@ FetchWeatherUseCase createUseCase(YumemiWeather api) {
 void main() {
   group('FetchWeatherUseCaseImpl', () {
     const area = 'tokyo';
+    final date = DateTime.utc(2020, 4, 1, 3);
 
     const successCases = {
       'sunny': WeatherCondition.sunny,
@@ -28,27 +32,61 @@ void main() {
 
     for (final MapEntry(key: weather, value: expected)
         in successCases.entries) {
-      test('API が "$weather" を返すと Success($expected) を返す', () {
-        final useCase = createUseCase(FakeYumemiWeather.returns(weather));
+      test('API が "$weather" の天気予報を返すと Success(WeatherForecast) を返す', () {
+        final useCase = createUseCase(
+          FakeYumemiWeather.returns(
+            weatherResponseJson(weatherCondition: weather),
+          ),
+        );
 
-        expect(useCase(area: area), isSuccess(expected));
+        expect(
+          useCase(area: area, date: date),
+          isSuccess(
+            WeatherForecast(
+              condition: expected,
+              maxTemperature: 25,
+              minTemperature: 7,
+              date: DateTime.parse('2020-04-01T12:00:00+09:00'),
+            ),
+          ),
+        );
       });
     }
 
-    test('指定した area で API を呼び出す', () {
-      final api = FakeYumemiWeather.returns('sunny');
+    test('area と date を JSON にして API を呼び出す', () {
+      final api = FakeYumemiWeather.returns(weatherResponseJson());
       final useCase = createUseCase(api);
 
-      useCase(area: area);
+      useCase(area: area, date: date);
 
-      expect(api.requestedAreas, [area]);
+      expect(api.requests.map(jsonDecode), [
+        {'area': area, 'date': '2020-04-01T03:00:00.000Z'},
+      ]);
     });
 
-    for (final weather in ['snowy', 'unknown', '']) {
-      test('API が想定外の "$weather" を返すと UnknownError の Failure を返す', () {
-        final useCase = createUseCase(FakeYumemiWeather.returns(weather));
+    final invalidResponseCases = {
+      '想定外の天気': weatherResponseJson(weatherCondition: 'snowy'),
+      'JSON ではない文字列': 'sunny',
+      'オブジェクトではない JSON': '[]',
+      'キーが欠けた JSON': jsonEncode({
+        'weather_condition': 'sunny',
+        'max_temperature': 25,
+      }),
+      '型が異なる JSON': jsonEncode({
+        'weather_condition': 'sunny',
+        'max_temperature': '25',
+        'min_temperature': 7,
+        'date': '2020-04-01T12:00:00+09:00',
+      }),
+      '日付として解釈できない JSON': weatherResponseJson(date: 'tomorrow'),
+    };
 
-        expect(useCase(area: area), isFailure<UnknownError>());
+    for (final MapEntry(key: description, value: response)
+        in invalidResponseCases.entries) {
+      test('API が$descriptionを返すと UnknownError の Failure を返す', () {
+        final useCase = createUseCase(FakeYumemiWeather.returns(response));
+
+        expect(useCase(area: area, date: date), isFailure<UnknownError>());
       });
     }
 
@@ -59,7 +97,10 @@ void main() {
           FakeYumemiWeather.throws(YumemiWeatherError.invalidParameter),
         );
 
-        expect(useCase(area: area), isFailure<InvalidParameterError>());
+        expect(
+          useCase(area: area, date: date),
+          isFailure<InvalidParameterError>(),
+        );
       },
     );
 
@@ -68,7 +109,7 @@ void main() {
         FakeYumemiWeather.throws(YumemiWeatherError.unknown),
       );
 
-      expect(useCase(area: area), isFailure<UnknownError>());
+      expect(useCase(area: area, date: date), isFailure<UnknownError>());
     });
   });
 }
