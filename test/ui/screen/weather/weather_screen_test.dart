@@ -52,6 +52,7 @@ void main() {
 
         await tapReload(tester);
 
+        expect(find.byType(AlertDialog), findsOneWidget);
         expect(find.text('天気の取得条件が正しくありません。'), findsOneWidget);
       },
     );
