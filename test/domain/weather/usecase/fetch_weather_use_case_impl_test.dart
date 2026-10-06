@@ -35,6 +35,15 @@ void main() {
       });
     }
 
+    test('指定した area で API を呼び出す', () {
+      final api = FakeYumemiWeather.returns('sunny');
+      final useCase = createUseCase(api);
+
+      useCase(area: area);
+
+      expect(api.requestedAreas, [area]);
+    });
+
     for (final weather in ['snowy', 'unknown', '']) {
       test('API が想定外の "$weather" を返すと UnknownError の Failure を返す', () {
         final useCase = createUseCase(FakeYumemiWeather.returns(weather));

@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:flutter_training/domain/model/app_error.dart';
 import 'package:flutter_training/ui/screen/weather/app_error_extension.dart';
 import 'package:flutter_training/ui/screen/weather/weather_condition_extension.dart';
 import 'package:flutter_training/ui/screen/weather/weather_view_model.dart';
@@ -13,27 +16,10 @@ class WeatherScreen extends ConsumerWidget {
     ref.listen(weatherViewModelProvider.select((state) => state.error), (
       _,
       error,
-    ) async {
-      if (error == null) {
-        return;
+    ) {
+      if (error != null) {
+        unawaited(_showErrorDialog(context, ref, error));
       }
-      await showDialog<void>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('エラー'),
-          content: Text(error.message),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('OK'),
-            ),
-          ],
-        ),
-      );
-      if (!context.mounted) {
-        return;
-      }
-      ref.read(weatherViewModelProvider.notifier).clearError();
     });
 
     final weatherCondition = ref.watch(
@@ -105,5 +91,29 @@ class WeatherScreen extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _showErrorDialog(
+    BuildContext context,
+    WidgetRef ref,
+    AppError error,
+  ) async {
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('エラー'),
+        content: Text(error.message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+    if (!context.mounted) {
+      return;
+    }
+    ref.read(weatherViewModelProvider.notifier).clearError();
   }
 }
