@@ -71,6 +71,7 @@ lib/
 test/
 ├── domain/weather/usecase/        # UseCase のユニットテスト
 ├── ui/screen/launch/              # AfterLayoutMixin の Widget テスト
+├── ui/screen/weather/             # WeatherScreen の Widget テスト（エラーダイアログ）
 ├── fake/                          # 外部 API の Fake
 └── helper/                        # テスト用 Matcher など
 ```
@@ -139,6 +140,7 @@ sequenceDiagram
   - yumemi_lints の `avoid_catches_without_on_clauses` に従い、`on` 節で型を指定して catch する
   - `Error`（プログラミングエラー）は catch しない（`avoid_catching_errors`）
 - **UseCaseImpl は Repository の `Result` を受け取り、必要に応じて組み合わせて返す。** 例外の変換は行わない
+  - 今は Repository への委譲だけの UseCase もあるが、ViewModel が Repository に直接依存しないようにするため、そして複数の Repository の組み合わせやビジネスロジックを足す場所として、UseCase を残す
 - **ViewModel は `Result` を `switch` で網羅的に処理する。** `Result` と `AppError` は `sealed class` なので、新しい `AppError` を追加するとコンパイラが未処理の分岐を検出する
 
 ### Domain の共通モデル
@@ -185,3 +187,4 @@ FetchWeatherUseCase createUseCase(YumemiWeather api) {
 - `Result` の検証には `test/helper/result_matchers.dart` の `isSuccess` / `isFailure<E>` を使う
 - 入力と期待値の組が複数あるケースは、`Map` と `for` でテストケースを生成する
 - 画面をまたいで使う UI の仕組み（`AfterLayoutMixin` など）は、テスト用の Widget に組み込んで `testWidgets` で振る舞いを検証する
+- 画面の振る舞いのうち、状態と UI の連携に依存するもの（エラーダイアログの表示と、閉じた後の再表示など）は、Screen の Widget テストで検証する。差し替えるのは UseCase のテストと同じく外部 API の Fake だけにする（`ProviderScope(overrides: [...])`）

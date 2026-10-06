@@ -9,11 +9,13 @@ class FakeYumemiWeather extends Fake implements YumemiWeather {
 
   final String Function() _fetch;
 
-  final List<String> requestedAreas = [];
+  final List<String> _requestedAreas = [];
+
+  List<String> get requestedAreas => List.unmodifiable(_requestedAreas);
 
   @override
   String fetchThrowsWeather(String area) {
-    requestedAreas.add(area);
+    _requestedAreas.add(area);
     return _fetch();
   }
 }
