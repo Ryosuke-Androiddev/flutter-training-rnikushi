@@ -16,13 +16,16 @@ class FakeYumemiWeather extends Fake implements YumemiWeather {
 
   final List<String> _requestedAreas = [];
 
+  var _callCount = 0;
+
   List<String> get requestedAreas => List.unmodifiable(_requestedAreas);
 
   @override
   String fetchThrowsWeather(String area) {
-    final index = min(_requestedAreas.length, _responses.length - 1);
     _requestedAreas.add(area);
-    return _responses[index]();
+    final response = _responses[min(_callCount, _responses.length - 1)];
+    _callCount++;
+    return response();
   }
 
   static String _throw(YumemiWeatherError error) =>
