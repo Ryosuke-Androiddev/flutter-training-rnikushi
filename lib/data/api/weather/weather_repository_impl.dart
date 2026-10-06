@@ -25,7 +25,7 @@ class WeatherRepositoryImpl implements WeatherRepository {
         final Map<String, dynamic> json => Success(
           WeatherResponse.fromJson(json).toWeatherForecast(),
         ),
-        _ => const Failure(UnknownError()),
+        _ => const Failure(UnexpectedResponseError()),
       };
     } on YumemiWeatherError catch (error) {
       return Failure(switch (error) {
@@ -33,9 +33,9 @@ class WeatherRepositoryImpl implements WeatherRepository {
         YumemiWeatherError.unknown => const UnknownError(),
       });
     } on FormatException {
-      return const Failure(UnknownError());
+      return const Failure(MalformedJsonError());
     } on CheckedFromJsonException {
-      return const Failure(UnknownError());
+      return const Failure(UnexpectedResponseError());
     }
   }
 }

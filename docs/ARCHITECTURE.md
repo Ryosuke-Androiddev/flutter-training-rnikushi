@@ -56,7 +56,7 @@ lib/
 ├── domain/
 │   ├── model/                     # 機能をまたいで使う共通モデル
 │   │   ├── result.dart            # Result<T>（Success / Failure）
-│   │   └── app_error.dart         # AppError（InvalidParameterError / UnknownError）
+│   │   └── app_error.dart         # AppError（InvalidParameterError / MalformedJsonError / UnexpectedResponseError / UnknownError）
 │   └── weather/                   # 機能単位
 │       ├── model/                 # Domain Model（WeatherCondition / WeatherForecast）
 │       ├── repository/            # Repository interface
@@ -127,9 +127,12 @@ sequenceDiagram
     API-->>R: JSON 文字列
     R->>R: jsonDecode して WeatherResponse.fromJson()
     R-->>UC: Success(WeatherForecast)
-  else 想定外のレスポンス
-    API-->>R: 解釈できない JSON
-    R-->>UC: Failure(UnknownError)
+  else JSON として解釈できない
+    API-->>R: JSON ではない文字列
+    R-->>UC: Failure(MalformedJsonError)
+  else 期待する形式ではない
+    API-->>R: 型・キー・値が想定と異なる JSON
+    R-->>UC: Failure(UnexpectedResponseError)
   else API のエラー
     API--xR: throw YumemiWeatherError
     R-->>UC: Failure(AppError)
@@ -140,7 +143,10 @@ sequenceDiagram
 
 - **RepositoryImpl は外部 API の結果を `Result` にマッピングして返す。** Domain の例外として throw し直さない
   - 外部パッケージのエラー型（例: `YumemiWeatherError`）は RepositoryImpl で catch し、対応する `AppError` の `Failure` にして返す。外部パッケージの型を Domain に漏らさない
-  - 想定外のレスポンスも `Failure(UnknownError())` として返す。JSON として解釈できない（`FormatException`）、オブジェクトではない、DTO に変換できない（`CheckedFromJsonException`）場合が該当する
+  - 想定外のレスポンスは、原因ごとに対応する `AppError` の `Failure` にして返す。`UnknownError` にまとめて例外の意味を失わないようにする
+    - JSON として解釈できない（`FormatException`）: `MalformedJsonError`
+    - JSON だが期待する形式ではない（オブジェクトではない、または DTO に変換できない `CheckedFromJsonException`）: `UnexpectedResponseError`
+  - `UnknownError` は、API が原因不明のエラー（`YumemiWeatherError.unknown`）を返したときにだけ使う
   - yumemi_lints の `avoid_catches_without_on_clauses` に従い、`on` 節で型を指定して catch する
   - `Error`（プログラミングエラー）は catch しない（`avoid_catching_errors`）
 - **UseCaseImpl は Repository の `Result` を受け取り、必要に応じて組み合わせて返す。** 例外の変換は行わない
@@ -156,6 +162,8 @@ final class Failure<T> extends Result<T> { const Failure(this.error); final AppE
 
 sealed class AppError { const AppError(); }
 final class InvalidParameterError extends AppError { const InvalidParameterError(); }
+final class MalformedJsonError extends AppError { const MalformedJsonError(); }
+final class UnexpectedResponseError extends AppError { const UnexpectedResponseError(); }
 final class UnknownError extends AppError { const UnknownError(); }
 ```
 

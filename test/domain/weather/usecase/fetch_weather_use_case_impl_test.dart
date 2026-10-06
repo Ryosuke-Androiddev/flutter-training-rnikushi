@@ -64,9 +64,22 @@ void main() {
       ]);
     });
 
-    final invalidResponseCases = {
+    for (final response in ['sunny', '{"weather_condition":', '']) {
+      test(
+        'API が JSON ではない "$response" を返すと MalformedJsonError を返す',
+        () {
+          final useCase = createUseCase(FakeYumemiWeather.returns(response));
+
+          expect(
+            useCase(area: area, date: date),
+            isFailure<MalformedJsonError>(),
+          );
+        },
+      );
+    }
+
+    final unexpectedResponseCases = {
       '想定外の天気': weatherResponseJson(weatherCondition: 'snowy'),
-      'JSON ではない文字列': 'sunny',
       'オブジェクトではない JSON': '[]',
       'キーが欠けた JSON': jsonEncode({
         'weather_condition': 'sunny',
@@ -82,11 +95,14 @@ void main() {
     };
 
     for (final MapEntry(key: description, value: response)
-        in invalidResponseCases.entries) {
-      test('API が$descriptionを返すと UnknownError の Failure を返す', () {
+        in unexpectedResponseCases.entries) {
+      test('API が$descriptionを返すと UnexpectedResponseError の Failure を返す', () {
         final useCase = createUseCase(FakeYumemiWeather.returns(response));
 
-        expect(useCase(area: area, date: date), isFailure<UnknownError>());
+        expect(
+          useCase(area: area, date: date),
+          isFailure<UnexpectedResponseError>(),
+        );
       });
     }
 
