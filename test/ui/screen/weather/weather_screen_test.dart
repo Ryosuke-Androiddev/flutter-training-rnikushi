@@ -97,7 +97,7 @@ void main() {
       await pumpWeatherScreen(
         tester,
         FakeYumemiWeather.returnsThenThrows(
-          'sunny',
+          weatherResponseJson(),
           YumemiWeatherError.unknown,
         ),
       );
@@ -115,11 +115,38 @@ void main() {
     });
 
     testWidgets('取得に成功するとダイアログを表示しない', (tester) async {
-      await pumpWeatherScreen(tester, FakeYumemiWeather.returns('sunny'));
+      await pumpWeatherScreen(
+        tester,
+        FakeYumemiWeather.returns(weatherResponseJson()),
+      );
 
       await tapReload(tester);
 
       expect(find.byType(AlertDialog), findsNothing);
+    });
+
+    testWidgets('取得前は気温を ** ℃ で表示する', (tester) async {
+      await pumpWeatherScreen(
+        tester,
+        FakeYumemiWeather.returns(weatherResponseJson()),
+      );
+
+      expect(find.text('** ℃'), findsNWidgets(2));
+    });
+
+    testWidgets('取得に成功すると最低気温と最高気温を表示する', (tester) async {
+      await pumpWeatherScreen(
+        tester,
+        FakeYumemiWeather.returns(
+          weatherResponseJson(minTemperature: -3, maxTemperature: 12),
+        ),
+      );
+
+      await tapReload(tester);
+
+      expect(find.text('-3 ℃'), findsOneWidget);
+      expect(find.text('12 ℃'), findsOneWidget);
+      expect(find.text('** ℃'), findsNothing);
     });
   });
 }

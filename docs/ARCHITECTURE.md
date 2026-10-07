@@ -41,6 +41,7 @@ flowchart LR
 ### 依存のルール
 
 - 依存は **UI → Domain ← Data** の向きにする。Domain は UI・Data・外部パッケージ（`yumemi_weather` など）に依存しない
+  - 例外として、Domain Model の定義に使う `freezed_annotation` には依存してよい（JSON の変換は Data の DTO で行うため、`json_annotation` には依存しない）
 - ViewModel は Repository を直接参照せず、UseCase を経由する
 - Screen は UseCase・Repository を直接参照しない
 - 具象クラス（`XxxImpl`）を参照してよいのは DI（`lib/di/`）だけ。それ以外は interface 型で扱う
@@ -55,14 +56,15 @@ lib/
 ├── domain/
 │   ├── model/                     # 機能をまたいで使う共通モデル
 │   │   ├── result.dart            # Result<T>（Success / Failure）
-│   │   └── app_error.dart         # AppError（InvalidParameterError / UnknownError）
+│   │   └── app_error.dart         # AppError（InvalidParameterError / MalformedJsonError / UnexpectedResponseError / UnknownError）
 │   └── weather/                   # 機能単位
-│       ├── model/                 # Domain Model（WeatherCondition など）
+│       ├── model/                 # Domain Model（WeatherCondition / WeatherForecast）
 │       ├── repository/            # Repository interface
 │       └── usecase/               # UseCase interface と実装
 ├── data/
 │   └── api/
 │       └── weather/               # API を使う RepositoryImpl
+│           └── dto/               # API のリクエスト・レスポンスの DTO（freezed + json_serializable）
 └── ui/
     └── screen/
         ├── launch/                # 起動時の画面（StatefulWidget）と AfterLayoutMixin
@@ -71,7 +73,7 @@ lib/
 test/
 ├── domain/weather/usecase/        # UseCase のユニットテスト
 ├── ui/screen/launch/              # AfterLayoutMixin の Widget テスト
-├── ui/screen/weather/             # WeatherScreen の Widget テスト（エラーダイアログ）
+├── ui/screen/weather/             # WeatherScreen の Widget テスト（気温の表示・エラーダイアログ）
 ├── fake/                          # 外部 API の Fake
 └── helper/                        # テスト用 Matcher など
 ```
@@ -117,26 +119,34 @@ sequenceDiagram
   participant R as RepositoryImpl
   participant API as YumemiWeather
 
-  VM->>UC: call(area: area)
-  UC->>R: fetchWeatherCondition(area: area)
-  R->>API: fetchThrowsWeather(area)
+  VM->>UC: call(area: area, date: date)
+  UC->>R: fetchWeatherForecast(area: area, date: date)
+  R->>R: WeatherRequest.toJson() を jsonEncode
+  R->>API: fetchWeather(jsonString)
   alt 正常
-    API-->>R: "sunny"
-    R-->>UC: Success(WeatherCondition)
-  else 想定外の値
-    API-->>R: "snowy" など
-    R-->>UC: Failure(UnknownError)
+    API-->>R: JSON 文字列
+    R->>R: jsonDecode して WeatherResponse.fromJson()
+    R-->>UC: Success(WeatherForecast)
+  else JSON として解釈できない
+    API-->>R: JSON ではない文字列
+    R-->>UC: Failure(MalformedJsonError)
+  else 期待する形式ではない
+    API-->>R: 型・キー・値が想定と異なる JSON
+    R-->>UC: Failure(UnexpectedResponseError)
   else API のエラー
     API--xR: throw YumemiWeatherError
     R-->>UC: Failure(AppError)
   end
-  UC-->>VM: Result<WeatherCondition>
+  UC-->>VM: Result<WeatherForecast>
   VM->>VM: switch で画面状態へ変換
 ```
 
 - **RepositoryImpl は外部 API の結果を `Result` にマッピングして返す。** Domain の例外として throw し直さない
   - 外部パッケージのエラー型（例: `YumemiWeatherError`）は RepositoryImpl で catch し、対応する `AppError` の `Failure` にして返す。外部パッケージの型を Domain に漏らさない
-  - 想定外のレスポンスも `Failure(UnknownError())` として返す
+  - 想定外のレスポンスは、原因ごとに対応する `AppError` の `Failure` にして返す。`UnknownError` にまとめて例外の意味を失わないようにする
+    - JSON として解釈できない（`FormatException`）: `MalformedJsonError`
+    - JSON だが期待する形式ではない（オブジェクトではない、または DTO に変換できない `CheckedFromJsonException`）: `UnexpectedResponseError`
+  - `UnknownError` は、API が原因不明のエラー（`YumemiWeatherError.unknown`）を返したときにだけ使う
   - yumemi_lints の `avoid_catches_without_on_clauses` に従い、`on` 節で型を指定して catch する
   - `Error`（プログラミングエラー）は catch しない（`avoid_catching_errors`）
 - **UseCaseImpl は Repository の `Result` を受け取り、必要に応じて組み合わせて返す。** 例外の変換は行わない
@@ -152,6 +162,8 @@ final class Failure<T> extends Result<T> { const Failure(this.error); final AppE
 
 sealed class AppError { const AppError(); }
 final class InvalidParameterError extends AppError { const InvalidParameterError(); }
+final class MalformedJsonError extends AppError { const MalformedJsonError(); }
+final class UnexpectedResponseError extends AppError { const UnexpectedResponseError(); }
 final class UnknownError extends AppError { const UnknownError(); }
 ```
 
@@ -160,12 +172,26 @@ final class UnknownError extends AppError { const UnknownError(); }
 
 ### エラーの表示
 
-- ViewModel の状態は画面単位の UiState（例: `WeatherUiState`）にまとめ、表示中のデータ（`weatherCondition`）と未表示のエラー（`error`）を別のフィールドで持つ
+- ViewModel の状態は画面単位の UiState（例: `WeatherUiState`）にまとめ、表示中のデータ（`weatherForecast`）と未表示のエラー（`error`）を別のフィールドで持つ
   - 取得に失敗しても表示中のデータは保持し、`error` だけを設定する
 - エラーメッセージは UI の拡張メソッド（`AppErrorX.message`）で `AppError` を `switch` して決める
 - Screen は `ref.listen` で `error` を購読し、`null` 以外になったら `showDialog` で `AlertDialog` を表示する
   - ダイアログを閉じたら ViewModel の `clearError()` を呼び、`error` を `null` に戻す（同じエラーが続いても再度表示できるようにするため）
   - 描画に使う値は `select` で必要なフィールドだけ `watch` する
+
+## JSON のシリアライズ
+
+- API とやりとりする JSON は、Data 層の DTO（`lib/data/api/<feature>/dto/`）で変換する。`freezed` で定義し、`json_serializable` で `fromJson` / `toJson` を生成する
+  - リクエストの DTO は `@Freezed(fromJson: false, toJson: true)`、レスポンスの DTO は `@Freezed(toJson: false)` とし、使う向きの変換だけを生成する
+  - レスポンスの DTO は `toXxx()`（例: `toWeatherForecast()`）で Domain Model に変換する。Domain Model は JSON のキー名や形式を知らない
+  - enum は名前が API の値と一致するため、DTO のフィールドに Domain の enum（`WeatherCondition`）をそのまま使う
+- Domain Model も `freezed` で定義し、値の等価性（`==`）をテストでの比較に使う
+- 共通の設定はプロジェクト直下の `build.yaml` にまとめる
+  - `field_rename: snake`: Dart の lowerCamelCase のフィールドを API の snake_case のキーに対応させる（`@JsonKey(name: ...)` は書かない）
+  - `checked: true`: 型の不一致・キーの欠落・未知の enum 値を `CheckedFromJsonException`（`Exception`）として投げるようにし、`avoid_catching_errors` に従ったまま RepositoryImpl で catch できるようにする
+  - `explicit_to_json: true`: ネストした DTO も `toJson` で変換する
+- 生成ファイル（`*.freezed.dart` / `*.g.dart`）はコミットする。CI では生成を行わないため、DTO や Domain Model を変更したら `fvm dart run build_runner build` を実行して生成ファイルも更新する
+  - 生成ファイルは `analysis_options.yaml` で静的解析の対象から外す
 
 ## テスト方針
 
@@ -182,9 +208,10 @@ FetchWeatherUseCase createUseCase(YumemiWeather api) {
 ```
 
 - Fake は `flutter_test` の `Fake` を継承し、対象のクラスを `implements` する（`test/fake/`）
-  - 正常系・異常系は名前付きコンストラクタ（`FakeYumemiWeather.returns` / `.throws`）で作り分ける。成功から失敗への遷移を確かめるときは `.returnsThenThrows` を使う（最後の応答を以降も繰り返す）
+  - 正常系・異常系は名前付きコンストラクタ（`FakeYumemiWeather.returns` / `.throws`）で作り分ける。正常なレスポンスの JSON は `weatherResponseJson()` で作り、変えたい値だけを引数で指定する。成功から失敗への遷移を確かめるときは `.returnsThenThrows` を使う（最後の応答を以降も繰り返す）
   - `Exception` を実装しないエラー（`YumemiWeatherError` など）を投げるときは、`only_throw_errors` に従い `Error.throwWithStackTrace` を使う
 - `Result` の検証には `test/helper/result_matchers.dart` の `isSuccess` / `isFailure<E>` を使う
 - 入力と期待値の組が複数あるケースは、`Map` と `for` でテストケースを生成する
+- API に渡すリクエストは、Fake が記録した JSON 文字列（`requests`）を `jsonDecode` して `Map` で検証する
 - 画面をまたいで使う UI の仕組み（`AfterLayoutMixin` など）は、テスト用の Widget に組み込んで `testWidgets` で振る舞いを検証する
 - 画面の振る舞いのうち、状態と UI の連携に依存するもの（エラーダイアログの表示と、閉じた後の再表示など）は、Screen の Widget テストで検証する。差し替えるのは UseCase のテストと同じく外部 API の Fake だけにする（`ProviderScope(overrides: [...])`）

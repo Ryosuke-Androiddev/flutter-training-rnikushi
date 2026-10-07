@@ -24,9 +24,10 @@ class WeatherScreen extends ConsumerWidget {
       }
     });
 
-    final weatherCondition = ref.watch(
-      weatherViewModelProvider.select((state) => state.weatherCondition),
+    final weatherForecast = ref.watch(
+      weatherViewModelProvider.select((state) => state.weatherForecast),
     );
+    final weatherCondition = weatherForecast?.condition;
     final labelLarge = Theme.of(context).textTheme.labelLarge;
 
     return Scaffold(
@@ -48,14 +49,14 @@ class WeatherScreen extends ConsumerWidget {
                   children: [
                     Expanded(
                       child: Text(
-                        '** ℃',
+                        '${weatherForecast?.minTemperature ?? '**'} ℃',
                         textAlign: TextAlign.center,
                         style: labelLarge?.copyWith(color: Colors.blue),
                       ),
                     ),
                     Expanded(
                       child: Text(
-                        '** ℃',
+                        '${weatherForecast?.maxTemperature ?? '**'} ℃',
                         textAlign: TextAlign.center,
                         style: labelLarge?.copyWith(color: Colors.red),
                       ),

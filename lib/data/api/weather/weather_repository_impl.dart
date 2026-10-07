@@ -1,7 +1,12 @@
+import 'dart:convert';
+
+import 'package:flutter_training/data/api/weather/dto/weather_request.dart';
+import 'package:flutter_training/data/api/weather/dto/weather_response.dart';
 import 'package:flutter_training/domain/model/app_error.dart';
 import 'package:flutter_training/domain/model/result.dart';
-import 'package:flutter_training/domain/weather/model/weather_condition.dart';
+import 'package:flutter_training/domain/weather/model/weather_forecast.dart';
 import 'package:flutter_training/domain/weather/repository/weather_repository.dart';
+import 'package:json_annotation/json_annotation.dart';
 import 'package:yumemi_weather/yumemi_weather.dart';
 
 class WeatherRepositoryImpl implements WeatherRepository {
@@ -10,19 +15,27 @@ class WeatherRepositoryImpl implements WeatherRepository {
   final YumemiWeather _api;
 
   @override
-  Result<WeatherCondition> fetchWeatherCondition({required String area}) {
+  Result<WeatherForecast> fetchWeatherForecast({
+    required String area,
+    required DateTime date,
+  }) {
+    final request = jsonEncode(WeatherRequest(area: area, date: date).toJson());
     try {
-      return switch (_api.fetchThrowsWeather(area)) {
-        'sunny' => const Success(WeatherCondition.sunny),
-        'cloudy' => const Success(WeatherCondition.cloudy),
-        'rainy' => const Success(WeatherCondition.rainy),
-        _ => const Failure(UnknownError()),
+      return switch (jsonDecode(_api.fetchWeather(request))) {
+        final Map<String, dynamic> json => Success(
+          WeatherResponse.fromJson(json).toWeatherForecast(),
+        ),
+        _ => const Failure(UnexpectedResponseError()),
       };
     } on YumemiWeatherError catch (error) {
       return Failure(switch (error) {
         YumemiWeatherError.invalidParameter => const InvalidParameterError(),
         YumemiWeatherError.unknown => const UnknownError(),
       });
+    } on FormatException {
+      return const Failure(MalformedJsonError());
+    } on CheckedFromJsonException {
+      return const Failure(UnexpectedResponseError());
     }
   }
 }
