@@ -96,6 +96,7 @@ description: flutter-training リポジトリのプルリクエストをレビ�
 - **テスト**
   - UseCase に対するユニットテストがあり、Repository は本物、外部 API だけを Fake にしているか
   - ViewModel に対するユニットテストがあり、API の成功・失敗から UiState への変換と、リスナーへの通知を検証しているか
+  - DTO の `toJson` / `fromJson` の変換と、想定外の JSON での例外をユニットテストで検証しているか
   - 依存の差し替えが `ProviderContainer.test(overrides: [...])` で行われているか
   - 正常系だけでなく、想定外のレスポンス・例外発生時の異常系もテストしているか
   - `Result` の検証に `isSuccess` / `isFailure<E>` を使っているか
