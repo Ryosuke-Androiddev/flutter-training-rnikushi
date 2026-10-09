@@ -52,6 +52,7 @@ flowchart LR
 lib/
 ├── main.dart                      # ProviderScope と MaterialApp の起動のみ
 ├── di/                            # Provider 定義（依存の組み立て）
+│   ├── clock_provider.dart        # 現在時刻を返す関数
 │   └── weather_providers.dart
 ├── domain/
 │   ├── model/                     # 機能をまたいで使う共通モデル
@@ -93,6 +94,7 @@ final weatherRepositoryProvider = Provider<WeatherRepository>(
 ```
 
 - 外部 API のクライアント（`YumemiWeather`）も Provider にして、テストで差し替えられるようにする
+- 現在時刻も `DateTime.now()` を直接呼ばず、`clockProvider`（`DateTime Function()`）から取得する。テストで固定の日時に差し替え、API に渡す日時を検証できるようにするため
 - ViewModel は `Notifier<State>` を継承し、`NotifierProvider` を ViewModel と同じファイルに定義する
   - 画面の状態は画面を閉じたら破棄するため、`NotifierProvider.autoDispose` で定義する
   - 初期状態は `build()` で返す
