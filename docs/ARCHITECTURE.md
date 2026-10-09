@@ -74,7 +74,7 @@ lib/
 test/
 ├── domain/weather/usecase/        # UseCase のユニットテスト
 ├── ui/screen/launch/              # AfterLayoutMixin の Widget テスト
-├── ui/screen/weather/             # WeatherScreen の Widget テスト（気温の表示・エラーダイアログ）
+├── ui/screen/weather/             # WeatherViewModel のユニットテストと WeatherScreen の Widget テスト（気温の表示・エラーダイアログ）
 ├── fake/                          # 外部 API の Fake
 └── helper/                        # テスト用 Matcher など
 ```
@@ -198,6 +198,9 @@ final class UnknownError extends AppError { const UnknownError(); }
 ## テスト方針
 
 - **ユニットテストは UseCase に対して書く。** Repository は本物の `RepositoryImpl` を使い、外部 API だけを Fake に差し替える。これで UseCase と Repository の振る舞い（レスポンス・API のエラーから `Result` への変換）をまとめて保証する
+- **ViewModel にもユニットテストを書く。** UseCase のテストと同じく外部 API だけを Fake に差し替え、API の結果から UiState への変換と、状態がリスナーに通知されることを保証する
+  - `container.listen(xxxViewModelProvider, ..., fireImmediately: true)` で通知された状態を記録し、初期状態から順に検証する。`autoDispose` の Provider が途中で破棄されないようにする意味もある
+  - 現在時刻は `clockProvider` を固定の日時に差し替え、API に渡すリクエストを検証する
 - 依存の差し替えは `ProviderContainer.test(overrides: [...])` と `overrideWithValue` で行う
 
 ```dart
